@@ -1,3 +1,8 @@
+from PIL import Image
+from PIL import ImageFilter
+#from IPython.display import Image as JubImage
+import numpy
+
 # NOTE: last try before it somehow worked was pip3 install opencv-python
 #
 # Sorts pictures in current directory into two subdirs, blurred and ok
@@ -8,13 +13,13 @@
 # stock python libs
 import os, shutil, re, sys
 # additional libs
-import cv2
+#import cv2
 from pathlib import Path
 
 # DEFAULTS
 FOCUS_THRESHOLD = 20
-DIRECTORY = Path('.')
-EXT = '.jpg'
+DIRECTORY = Path.cwd()
+EXT = '.JPG'
 
 HELP_MESSAGE = f"""
 This tool assists with blur dectection on images. The follow parameters are available:
@@ -57,6 +62,8 @@ BLURRED_DIR = 'blurred'
 OK_DIR = 'ok'
 
 blur_count = 0
+
+print(str(Path.cwd()) + '\\' + str(DIRECTORY))
 files = [f for f in os.listdir(DIRECTORY) if f.endswith(EXT)]
 
 try:
@@ -65,22 +72,58 @@ try:
 except:
    pass
 
+next = 'y'
 for infile in files:
-   print('Processing file %s ...' % (infile))
-   cv_image = cv2.imread(infile)
+    if next == 'n':
+       exit()
+    else:
+        print(f'Processing file {infile}... {DIRECTORY}\{infile}')
+        print(str(Path.cwd()) + '\\' + str(DIRECTORY) + '\\' + infile)
+        image = Image.open(infile)
+        print(infile)
+        h1 = image.histogram()
+        zero = 0
+        not_zero = 0
+        for i in h1:
+           if i < 150:
+              zero = zero + i
+           else:
+              not_zero = not_zero + i
+        print(f'Original: {zero} zeros vs {not_zero} not_zeros, median: {numpy.median(h1)}')
+        #arr1 = numpy.array(image)
+        #print(image.getdata())
+        imageWithEdges = image.filter(ImageFilter.FIND_EDGES)
+        h2 = imageWithEdges.histogram()
+        #print(h2)
+        zero = 0
+        not_zero = 0
+        for i in h2:
+           if i < 150:
+              zero = zero + i
+           else:
+              not_zero = not_zero + i
+        print(f'Filtered: {zero} zeros vs {not_zero} not_zeros, median: {numpy.median(h2)}')
+        #image_file = image_file.convert('1')
+        
 
-   # Covert to grayscale
-   gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        bw = imageWithEdges.convert('L')
+        bw.show()
 
-   # Compute the Laplacian of the image and then the focus
-   #     measure is simply the variance of the Laplacian
-   variance_of_laplacian = cv2.Laplacian(gray, cv2.CV_64F).var()
+        black = 0
+        white = 0
 
-   # If below threshold, it's blurry
-   if variance_of_laplacian < FOCUS_THRESHOLD:
-      shutil.move(infile, BLURRED_DIR)
-      blur_count += 1
-   else:
-      #shutil.move(infile, OK_DIR)
-
-print('Done.  Processed %d files into %d blurred, and %d ok.' % (len(files), blur_count, len(files)-blur_count))
+        for pixel in bw.getdata():
+           #print(pixel)
+           if pixel == (0): # if your image is RGB (if RGBA, (0, 0, 0, 255) or so
+              black += 1
+           elif pixel == (255):
+              white += 1
+        print(f'Black: {str(black)} | White: {str(white)} | B/W Ratio: {str(white/black)}')
+        #imageWithEdges.show()
+        #arr2 = numpy.array(imageWithEdges)
+        #diff = arr1 - arr2
+        #new_image = Image.fromarray(diff)
+        #new_image.show()
+        #print(arr1)
+        #print(arr2)
+        next = input('y for next, n for stop: ')
